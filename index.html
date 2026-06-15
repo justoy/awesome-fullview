@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Full View Spending</title>
+    <link rel="stylesheet" href="styles.css?v=9">
+  </head>
+  <body>
+    <header class="app-header">
+      <div>
+        <p class="eyebrow">Fidelity Full View</p>
+        <h1>Spending Analysis</h1>
+      </div>
+      <div class="file-actions">
+        <label class="file-button" for="fileInput">
+          <input id="fileInput" type="file" accept=".csv,text/csv">
+          Import CSV
+        </label>
+        <span id="sourceLabel" class="source-label">Loading local CSV...</span>
+      </div>
+    </header>
+
+    <nav class="filter-bar" aria-label="Filters">
+      <div class="filter-grid">
+        <label>
+          Month
+          <select id="monthFilter"></select>
+        </label>
+        <label>
+          Account
+          <select id="accountFilter"></select>
+        </label>
+        <label>
+          Category
+          <select id="categoryFilter"></select>
+        </label>
+        <label>
+          Search
+          <input id="searchInput" type="search" placeholder="Merchant or description">
+        </label>
+        <label class="check-row">
+          <input id="refundToggle" type="checkbox" checked>
+          Include refunds
+        </label>
+        <button id="clearFilters" class="text-button clear-button" type="button">Clear</button>
+      </div>
+      <div class="data-quality">
+        <h2>Import Check</h2>
+        <dl id="qualityList"></dl>
+      </div>
+    </nav>
+
+    <main class="layout">
+      <section id="emptyUpload" class="empty-upload" hidden>
+        <div class="empty-illustration" aria-hidden="true">
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+        <div>
+          <p class="eyebrow">No Data Loaded</p>
+          <h2>Import a Fidelity Full View CSV to start.</h2>
+          <p>The dashboard will stay empty until a local CSV is selected. Your data remains in this browser session.</p>
+        </div>
+        <label class="file-button primary-empty" for="fileInput">Import CSV</label>
+      </section>
+
+      <section id="dashboard" class="content" hidden>
+        <section class="kpis" aria-label="Summary metrics">
+          <article>
+            <span>Net Spend</span>
+            <strong id="kpiSpend">$0</strong>
+          </article>
+          <article>
+            <span>Monthly Average</span>
+            <strong id="kpiAverage">$0</strong>
+          </article>
+          <article>
+            <span>Highest Month</span>
+            <strong id="kpiHighMonth">-</strong>
+          </article>
+          <article>
+            <span>Top Category</span>
+            <strong id="kpiTopCategory">-</strong>
+          </article>
+        </section>
+
+        <section class="chart-grid">
+          <article class="panel wide">
+            <div class="panel-heading">
+              <div>
+                <h2>Category Spend by Month</h2>
+                <p>Click a segment to inspect that category across months.</p>
+              </div>
+              <select id="stackMode" aria-label="Stack chart mode">
+                <option value="category">Category</option>
+                <option value="subcategory">Subcategory</option>
+              </select>
+            </div>
+            <div id="stackedChart" class="stacked-chart"></div>
+            <div id="legend" class="legend"></div>
+          </article>
+
+          <article class="panel">
+            <div class="panel-heading">
+              <div>
+                <h2>Monthly Trend</h2>
+                <p>Total filtered spend over time.</p>
+              </div>
+            </div>
+            <div id="trendChart" class="trend-chart"></div>
+          </article>
+        </section>
+
+        <section class="split">
+          <article class="panel">
+            <div class="panel-heading">
+              <div>
+                <h2>Categories</h2>
+                <p>Colors match the chart series.</p>
+              </div>
+            </div>
+            <div class="table-wrap category-table">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Category</th>
+                    <th class="num">Spend</th>
+                    <th class="num">Share</th>
+                  </tr>
+                </thead>
+                <tbody id="categoryRows"></tbody>
+              </table>
+            </div>
+          </article>
+
+          <article class="panel">
+            <div class="panel-heading">
+              <div>
+                <h2 id="detailTitle">Category Detail</h2>
+                <p id="detailSubtitle">Select a category to drill in.</p>
+              </div>
+              <button id="merchantToggle" class="text-button" type="button">View All</button>
+            </div>
+            <div id="detailBars" class="detail-bars"></div>
+            <div id="merchantList" class="merchant-list"></div>
+          </article>
+        </section>
+
+        <section class="panel">
+          <div class="panel-heading">
+            <div>
+              <h2>Transactions</h2>
+              <p id="transactionSummary">Showing 0 transactions.</p>
+            </div>
+            <button id="transactionToggle" class="text-button" type="button">View All</button>
+          </div>
+          <div class="table-wrap transaction-table">
+            <table>
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Description</th>
+                  <th>Account</th>
+                  <th>Category</th>
+                  <th>Subcategory</th>
+                  <th class="num">Spend</th>
+                </tr>
+              </thead>
+              <tbody id="transactionRows"></tbody>
+            </table>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <template id="emptyState">
+      <div class="empty">No transactions match the current filters.</div>
+    </template>
+    <div id="chartTooltip" class="chart-tooltip" role="status" hidden></div>
+
+    <script src="app.js?v=10"></script>
+  </body>
+</html>
