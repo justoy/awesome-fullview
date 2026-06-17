@@ -2,9 +2,9 @@
 
 ## Project Overview
 
-This project is a local Fidelity Full View spending dashboard plus a Chrome extension prototype.
+This project is a Chrome extension for local Fidelity Full View spending analysis.
 
-The original app loads a Fidelity Full View CSV and renders spending charts from `index.html`, `app.js`, and `styles.css`. The extension keeps that dashboard UI but replaces the manual CSV workflow with a refresh flow that pulls data from the user's already-authenticated Fidelity browser session.
+The original dashboard UI lives in `index.html`, `app.js`, and `styles.css`. The current product flow is the Chrome extension refresh path, which pulls data from the user's already-authenticated Fidelity browser session and stores normalized transactions locally.
 
 The extension must not collect Fidelity credentials, MFA codes, cookies, or session tokens. Login and MFA stay entirely inside the normal Fidelity tab.
 
@@ -17,7 +17,7 @@ The extension must not collect Fidelity credentials, MFA codes, cookies, or sess
 - `lib/normalization.js`: Fidelity API response normalization and fallback request-body construction.
 - `lib/db.js`: IndexedDB storage layer.
 - `popup.html`, `popup.js`, `popup.css`: Extension popup and refresh controls.
-- `index.html`, `app.js`, `styles.css`: Dashboard UI. In extension mode, it reads IndexedDB first; in local mode, it can still load/import CSV.
+- `index.html`, `app.js`, `styles.css`: Dashboard UI. In extension mode, it reads IndexedDB first. Local mode is only a UI/manual-import fallback.
 
 ## User Flow
 
@@ -172,7 +172,7 @@ Current refresh behavior replaces the full transaction store with the latest nor
 
 ## Local Development
 
-Run the local dashboard without the extension:
+Run the dashboard without the extension for UI work:
 
 ```sh
 python3 -m http.server 5173
@@ -184,7 +184,7 @@ Then open:
 http://127.0.0.1:5173/
 ```
 
-In local mode, the dashboard loads the default CSV if present and supports manual CSV import.
+Local mode does not auto-load sample data. Use the Chrome extension for Fidelity sync, or manually import a CSV only as a fallback.
 
 ## Extension Development
 

@@ -1,4 +1,3 @@
-const DEFAULT_CSV = "Transactions_Jun-15-2026 at 2.24.02 PM.csv";
 const IS_EXTENSION = typeof chrome !== "undefined" && Boolean(chrome.runtime?.id);
 const REQUIRED_COLUMNS = [
   "Date",
@@ -738,28 +737,22 @@ async function loadCsvText(name, text) {
   }
 }
 
-async function loadDefaultCsv() {
+async function loadInitialData() {
   if (IS_EXTENSION) {
     els.refreshFidelity.hidden = false;
     const hasStoredData = await loadStoredTransactions();
     if (!hasStoredData) {
       const status = await loadExtensionStatus().catch(() => null);
-      els.sourceLabel.textContent = status?.lastSyncError?.error || "Connect Fidelity or import a CSV.";
+      els.sourceLabel.textContent = status?.lastSyncError?.error || "Refresh Fidelity to load dashboard data.";
       setupFilters();
       render();
     }
     return;
   }
 
-  try {
-    const response = await fetch(encodeURI(DEFAULT_CSV));
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    await loadCsvText(DEFAULT_CSV, await response.text());
-  } catch {
-    els.sourceLabel.textContent = "Use Import CSV to load your Fidelity export.";
-    setupFilters();
-    render();
-  }
+  els.sourceLabel.textContent = "Load as a Chrome extension, or import a CSV for local fallback.";
+  setupFilters();
+  render();
 }
 
 [
@@ -807,4 +800,4 @@ els.refreshFidelity.addEventListener("click", async () => {
     : "Refresh completed, but no transactions were stored.";
 });
 
-loadDefaultCsv();
+loadInitialData();

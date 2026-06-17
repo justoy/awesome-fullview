@@ -1,8 +1,23 @@
 # Full View Spending
 
-Local Fidelity Full View spending visualizer and Chrome extension prototype.
+Chrome extension for local Fidelity Full View spending analysis.
 
-## Run
+## Chrome Extension
+
+Load this directory as an unpacked Chrome extension:
+
+1. Open `chrome://extensions`.
+2. Enable Developer mode.
+3. Choose `Load unpacked`.
+4. Select this repo directory.
+
+The extension popup can open the Fidelity Full View Spending page and request MTD, YTD, or custom date ranges after you complete Fidelity login/MFA in the normal Fidelity tab. Pulled transactions are normalized and stored locally in IndexedDB, then shown in the extension dashboard.
+
+The extension does not handle Fidelity credentials.
+
+## Local Fallback
+
+The dashboard can still be served locally for UI work:
 
 ```sh
 python3 -m http.server 5173
@@ -14,20 +29,7 @@ Then open:
 http://127.0.0.1:5173/
 ```
 
-The app loads `Transactions_Jun-15-2026 at 2.24.02 PM.csv` by default when served from this directory. You can also import another Fidelity CSV with the `Import CSV` button.
-
-## Chrome Extension MVP
-
-Load this directory as an unpacked extension:
-
-1. Open `chrome://extensions`.
-2. Enable Developer mode.
-3. Choose `Load unpacked`.
-4. Select this repo directory.
-
-The extension popup can open the Fidelity Full View Spending page and request MTD, YTD, or custom date ranges after you complete Fidelity login/MFA in the normal Fidelity tab. Pulled transactions are normalized and stored locally in IndexedDB, then shown in the same dashboard at the extension `index.html` page.
-
-The extension does not handle Fidelity credentials.
+Local mode does not auto-load sample data. Use the extension for Fidelity sync, or import a CSV manually only as a fallback.
 
 ## What It Shows
 
@@ -37,4 +39,4 @@ The extension does not handle Fidelity credentials.
 - Category drilldown by subcategory and top descriptions.
 - Filterable transaction table.
 
-The parser skips the Fidelity title row, stops at the `DATA GLOSSARY:` footer, and treats charges as positive spend by using `spend = -Amount`. Positive expense amounts therefore reduce spend as refunds or credits.
+Extension-loaded dashboard data is stored in IndexedDB. Expense amounts are converted to positive spend with `spend = -amount`; refunds/credits therefore reduce spend.
