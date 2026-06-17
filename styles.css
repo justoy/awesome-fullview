@@ -106,6 +106,10 @@ h3 {
   color: #fff;
 }
 
+button.file-button {
+  font-size: 13px;
+}
+
 .file-button input {
   position: absolute;
   inset: 0;

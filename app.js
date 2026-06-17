@@ -1,4 +1,5 @@
 const DEFAULT_CSV = "Transactions_Jun-15-2026 at 2.24.02 PM.csv";
+const IS_EXTENSION = typeof chrome !== "undefined" && Boolean(chrome.runtime?.id);
 const REQUIRED_COLUMNS = [
   "Date",
   "Description",
@@ -44,6 +45,7 @@ const els = {
   dashboard: document.querySelector("#dashboard"),
   emptyUpload: document.querySelector("#emptyUpload"),
   sourceLabel: document.querySelector("#sourceLabel"),
+  refreshFidelity: document.querySelector("#refreshFidelity"),
   monthFilter: document.querySelector("#monthFilter"),
   accountFilter: document.querySelector("#accountFilter"),
   categoryFilter: document.querySelector("#categoryFilter"),
@@ -123,6 +125,10 @@ function csvParse(text) {
 }
 
 function parseDate(value) {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const [year, month, day] = value.split("-").map(Number);
+    return new Date(year, month - 1, day);
+  }
   const match = value.match(/^([A-Za-z]{3})-(\d{1,2})-(\d{4})$/);
   if (!match) throw new Error(`Unsupported date: ${value}`);
   const months = {
@@ -152,6 +158,14 @@ function monthLabel(key) {
   const [year, month] = key.split("-").map(Number);
   return new Date(year, month - 1, 1).toLocaleDateString("en-US", {
     month: "short",
+  });
+}
+
+function displayDate(date) {
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
   });
 }
 
@@ -224,6 +238,65 @@ function parseFidelityCsv(text) {
       unknown: transactions.filter((row) => row.category === "Unknown" || row.subcategory === "Unknown").length,
     },
   };
+}
+
+function dashboardRowsFromStored(transactions) {
+  return transactions
+    .filter((record) => {
+      const type = record.transactionType || "Expense";
+      return type === "Expense" || type === "Expenses";
+    })
+    .map((record) => {
+      const date = parseDate(record.date);
+      const amount = Number(record.amount) || 0;
+      const type = record.transactionType || "Expense";
+      const spend = -amount;
+      return {
+        date,
+        dateText: displayDate(date),
+        description: record.description || "",
+        amount,
+        spend,
+        account: normalizeAccount(record.accountName || "Unknown"),
+        type,
+        category: record.category || "Unknown",
+        subcategory: record.subcategory || "Unknown",
+        hidden: record.hidden ? "Yes" : "No",
+        month: monthKey(date),
+      };
+    })
+    .sort((a, b) => b.date - a.date);
+}
+
+async function loadStoredTransactions() {
+  const rows = await window.financeDb.getAllTransactions();
+  const lastSync = await window.financeDb.getLastSync();
+  if (!rows.length) return false;
+
+  state.allTransactions = dashboardRowsFromStored(rows);
+  state.quality = {
+    imported: state.allTransactions.length,
+    skippedRows: 0,
+    footerRows: 0,
+    refunds: state.allTransactions.filter((row) => row.type === "Expense" && row.spend < 0).length,
+    unknown: state.allTransactions.filter((row) => row.category === "Unknown" || row.subcategory === "Unknown").length,
+  };
+  state.selectedCategory = "";
+  state.showAllTransactions = false;
+  state.showAllMerchants = false;
+  assignCategoryColors();
+  setupFilters();
+  render();
+  els.sourceLabel.textContent = lastSync
+    ? `Fidelity synced ${new Date(lastSync.createdAt).toLocaleString()}`
+    : "Fidelity data loaded";
+  return true;
+}
+
+async function loadExtensionStatus() {
+  const response = await chrome.runtime.sendMessage({ type: "GET_STATUS" });
+  if (!response.ok) throw new Error(response.error || "Could not read extension status.");
+  return response;
 }
 
 function sumBy(rows, keyFn, valueFn = (row) => row.spend) {
@@ -367,7 +440,7 @@ function renderStackedChart(rows) {
           style="height:${pct}%;background:${segmentColor}"
           data-tooltip="${escapeHtml(tooltip)}"
           data-tooltip-label="${escapeHtml(`${series} · ${monthLabel(month)} · ${currencyExact.format(value)} · ${pct.toFixed(1)}%`)}"
-          ${clickable ? `role="button" tabindex="0" data-month="${month}" data-category="${escapeHtml(category)}" onclick="applyChartSelection(this.dataset.category)"` : ""}
+          ${clickable ? `role="button" tabindex="0" data-month="${month}" data-category="${escapeHtml(category)}"` : ""}
         ></div>`;
       })
       .join("");
@@ -388,7 +461,7 @@ function renderStackedChart(rows) {
       const clickable = category && series !== "Other";
       const legendColor = series === "Other" ? "#94a3b8" : colorForCategory(category, index);
       return `<span class="legend-item ${clickable ? "clickable" : ""}"
-        ${clickable ? `role="button" tabindex="0" data-category="${escapeHtml(category)}" onclick="applyChartSelection(this.dataset.category)"` : ""}
+        ${clickable ? `role="button" tabindex="0" data-category="${escapeHtml(category)}"` : ""}
         title="${clickable ? `Filter to ${escapeHtml(category)}` : ""}">
         <span class="swatch" style="background:${legendColor}"></span>${escapeHtml(series)}
       </span>`;
@@ -666,6 +739,18 @@ async function loadCsvText(name, text) {
 }
 
 async function loadDefaultCsv() {
+  if (IS_EXTENSION) {
+    els.refreshFidelity.hidden = false;
+    const hasStoredData = await loadStoredTransactions();
+    if (!hasStoredData) {
+      const status = await loadExtensionStatus().catch(() => null);
+      els.sourceLabel.textContent = status?.lastSyncError?.error || "Connect Fidelity or import a CSV.";
+      setupFilters();
+      render();
+    }
+    return;
+  }
+
   try {
     const response = await fetch(encodeURI(DEFAULT_CSV));
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -702,6 +787,24 @@ els.fileInput.addEventListener("change", async (event) => {
   const file = event.target.files?.[0];
   if (!file) return;
   await loadCsvText(file.name, await file.text());
+});
+
+els.refreshFidelity.addEventListener("click", async () => {
+  if (!IS_EXTENSION) return;
+  els.sourceLabel.textContent = "Opening Fidelity...";
+  const response = await chrome.runtime.sendMessage({ type: "START_REFRESH", range: { mode: "ytd" } });
+  if (!response.ok) {
+    els.sourceLabel.textContent = response.error || "Refresh failed.";
+    return;
+  }
+  if (response.result?.status === "waiting") {
+    els.sourceLabel.textContent = response.result.message;
+    return;
+  }
+  const loaded = await loadStoredTransactions();
+  els.sourceLabel.textContent = loaded
+    ? `${response.result.imported} Fidelity transactions synced`
+    : "Refresh completed, but no transactions were stored.";
 });
 
 loadDefaultCsv();

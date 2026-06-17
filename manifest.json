@@ -1,0 +1,28 @@
+{
+  "manifest_version": 3,
+  "name": "Full View Spending",
+  "description": "Pull Fidelity Full View transactions from an authenticated browser session and show a local spending dashboard.",
+  "version": "0.1.0",
+  "permissions": ["tabs", "storage", "scripting"],
+  "host_permissions": ["https://digital.fidelity.com/*"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "Full View Spending",
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://digital.fidelity.com/ftgw/pna/customer/planning/spending/*"],
+      "js": ["content/page-hook.js"],
+      "run_at": "document_start",
+      "world": "MAIN"
+    },
+    {
+      "matches": ["https://digital.fidelity.com/ftgw/pna/customer/planning/spending/*"],
+      "js": ["lib/normalization.js", "content/fidelity.js"],
+      "run_at": "document_start"
+    }
+  ]
+}

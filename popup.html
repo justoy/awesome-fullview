@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Full View Spending</title>
+    <link rel="stylesheet" href="popup.css">
+  </head>
+  <body>
+    <main>
+      <p class="eyebrow">Fidelity Full View</p>
+      <h1>Spending</h1>
+      <p id="status" class="status">Checking local data...</p>
+
+      <label>
+        Range
+        <select id="rangeMode">
+          <option value="ytd">Year to date</option>
+          <option value="mtd">Month to date</option>
+          <option value="custom">Custom</option>
+        </select>
+      </label>
+
+      <div id="customDates" class="date-grid" hidden>
+        <label>
+          From
+          <input id="fromdate" type="date">
+        </label>
+        <label>
+          To
+          <input id="todate" type="date">
+        </label>
+      </div>
+
+      <div class="actions">
+        <button id="refresh" type="button">Refresh from Fidelity</button>
+        <button id="dashboard" class="secondary" type="button">Dashboard</button>
+      </div>
+    </main>
+    <script src="popup.js"></script>
+  </body>
+</html>

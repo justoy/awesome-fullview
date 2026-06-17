@@ -13,6 +13,7 @@
         <h1>Spending Analysis</h1>
       </div>
       <div class="file-actions">
+        <button id="refreshFidelity" class="file-button" type="button" hidden>Refresh Fidelity</button>
         <label class="file-button" for="fileInput">
           <input id="fileInput" type="file" accept=".csv,text/csv">
           Import CSV
@@ -180,6 +181,7 @@
     </template>
     <div id="chartTooltip" class="chart-tooltip" role="status" hidden></div>
 
-    <script src="app.js?v=10"></script>
+    <script src="lib/db.js"></script>
+    <script src="app.js"></script>
   </body>
 </html>
