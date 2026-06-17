@@ -309,7 +309,7 @@ input:focus,
 .kpis {
   grid-column: 1 / -1;
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 16px;
 }
 
@@ -364,6 +364,10 @@ input:focus,
 }
 
 .content > .panel {
+  grid-column: 1 / -1;
+}
+
+.recurring-panel {
   grid-column: 1 / -1;
 }
 
@@ -564,6 +568,60 @@ th {
   text-transform: uppercase;
 }
 
+.sort-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: inherit;
+  gap: 5px;
+  width: 100%;
+  min-height: 24px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  letter-spacing: inherit;
+  text-align: inherit;
+  text-transform: inherit;
+}
+
+.sort-button::after {
+  content: "";
+  flex: 0 0 auto;
+  width: 0;
+  height: 0;
+  border-right: 4px solid transparent;
+  border-left: 4px solid transparent;
+  opacity: 0;
+}
+
+.sort-button:hover,
+.sort-button:focus {
+  color: var(--accent);
+}
+
+.sort-button:focus {
+  outline: 2px solid rgba(15, 118, 110, 0.22);
+  outline-offset: 3px;
+}
+
+.sort-button.active::after {
+  opacity: 1;
+}
+
+.sort-button.active[data-direction="asc"]::after {
+  border-bottom: 6px solid currentColor;
+}
+
+.sort-button.active[data-direction="desc"]::after {
+  border-top: 6px solid currentColor;
+}
+
+.num .sort-button {
+  justify-content: flex-end;
+}
+
 tbody tr:nth-child(even) {
   background: #fafafa;
 }
@@ -639,6 +697,27 @@ tbody tr.selected {
   max-height: 430px;
 }
 
+.recurring-table {
+  max-height: 344px;
+}
+
+.recurring-merchant,
+.recurring-meta,
+.recurring-variable {
+  display: block;
+}
+
+.recurring-merchant {
+  font-weight: 780;
+}
+
+.recurring-meta,
+.recurring-variable {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
 .empty {
   padding: 22px;
   border: 1px dashed var(--line-strong);
@@ -674,6 +753,12 @@ tbody tr.selected {
   display: block;
   margin-bottom: 3px;
   font-size: 13px;
+}
+
+@media (max-width: 1180px) {
+  .kpis {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 980px) {

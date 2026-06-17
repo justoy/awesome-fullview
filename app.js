@@ -37,6 +37,11 @@ const state = {
   showAllTransactions: false,
   showAllMerchants: false,
   categoryColors: new Map(),
+  tableSorts: {
+    categories: { key: "value", direction: "desc" },
+    recurring: { key: "confidence", direction: "desc" },
+    transactions: { key: "date", direction: "desc" },
+  },
 };
 
 const els = {
@@ -57,9 +62,12 @@ const els = {
   kpiAverage: document.querySelector("#kpiAverage"),
   kpiHighMonth: document.querySelector("#kpiHighMonth"),
   kpiTopCategory: document.querySelector("#kpiTopCategory"),
+  kpiRecurring: document.querySelector("#kpiRecurring"),
   stackedChart: document.querySelector("#stackedChart"),
   legend: document.querySelector("#legend"),
   trendChart: document.querySelector("#trendChart"),
+  recurringSummary: document.querySelector("#recurringSummary"),
+  recurringRows: document.querySelector("#recurringRows"),
   categoryRows: document.querySelector("#categoryRows"),
   detailTitle: document.querySelector("#detailTitle"),
   detailSubtitle: document.querySelector("#detailSubtitle"),
@@ -71,6 +79,7 @@ const els = {
   transactionToggle: document.querySelector("#transactionToggle"),
   emptyState: document.querySelector("#emptyState"),
   chartTooltip: document.querySelector("#chartTooltip"),
+  sortButtons: document.querySelectorAll("[data-sort-table][data-sort-key]"),
 };
 
 const currency = new Intl.NumberFormat("en-US", {
@@ -166,6 +175,22 @@ function displayDate(date) {
     day: "numeric",
     year: "numeric",
   });
+}
+
+function addDays(date, days) {
+  const next = new Date(date);
+  next.setDate(next.getDate() + Math.round(days));
+  return next;
+}
+
+function addMonthsClamped(date, months) {
+  const next = new Date(date);
+  const day = next.getDate();
+  next.setDate(1);
+  next.setMonth(next.getMonth() + months);
+  const maxDay = new Date(next.getFullYear(), next.getMonth() + 1, 0).getDate();
+  next.setDate(Math.min(day, maxDay));
+  return next;
 }
 
 function normalizeAccount(name) {
@@ -311,6 +336,144 @@ function sortTotals(map) {
   return [...map.entries()].sort((a, b) => b[1] - a[1]);
 }
 
+function compareValues(a, b) {
+  if (a instanceof Date && b instanceof Date) return a - b;
+  if (typeof a === "number" && typeof b === "number") return a - b;
+  return String(a ?? "").localeCompare(String(b ?? ""), undefined, {
+    numeric: true,
+    sensitivity: "base",
+  });
+}
+
+function sortRows(rows, sort, valueForKey) {
+  const direction = sort.direction === "asc" ? 1 : -1;
+  return [...rows].sort((a, b) => {
+    const result = compareValues(valueForKey(a, sort.key), valueForKey(b, sort.key));
+    return result * direction;
+  });
+}
+
+function setTableSort(table, key, defaultDirection = "asc") {
+  const current = state.tableSorts[table];
+  const direction = current?.key === key ? (current.direction === "asc" ? "desc" : "asc") : defaultDirection;
+  state.tableSorts[table] = { key, direction };
+  if (table === "transactions") state.showAllTransactions = false;
+  render();
+}
+
+function updateSortButtons() {
+  els.sortButtons.forEach((button) => {
+    const sort = state.tableSorts[button.dataset.sortTable];
+    const active = sort?.key === button.dataset.sortKey;
+    button.classList.toggle("active", active);
+    button.dataset.direction = active ? sort.direction : "";
+    button.setAttribute("aria-sort", active ? (sort.direction === "asc" ? "ascending" : "descending") : "none");
+    button.setAttribute(
+      "aria-label",
+      `${button.textContent.trim()}, ${active ? `sorted ${sort.direction === "asc" ? "ascending" : "descending"}` : "not sorted"}`,
+    );
+  });
+}
+
+function median(values) {
+  if (!values.length) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  const middle = Math.floor(sorted.length / 2);
+  return sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
+}
+
+function average(values) {
+  return values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : 0;
+}
+
+function normalizeMerchantKey(description) {
+  return description
+    .toLowerCase()
+    .replace(/\b\d{1,2}[/-]\d{1,2}(?:[/-]\d{2,4})?\b/g, " ")
+    .replace(/\b\d{4,}\b/g, " ")
+    .replace(/[^a-z0-9&]+/g, " ")
+    .replace(/\b(pos|debit|card|purchase|payment|autopay|online|web|inc|llc|co)\b/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function cadenceFromInterval(days) {
+  const cadences = [
+    { name: "Weekly", days: 7, tolerance: 2, monthlyEstimate: 52 / 12 },
+    { name: "Biweekly", days: 14, tolerance: 3, monthlyEstimate: 26 / 12 },
+    { name: "Monthly", days: 30, tolerance: 6, monthlyEstimate: 1 },
+    { name: "Quarterly", days: 91, tolerance: 14, monthlyEstimate: 1 / 3 },
+    { name: "Annual", days: 365, tolerance: 35, monthlyEstimate: 1 / 12 },
+  ];
+  return cadences.find((cadence) => Math.abs(days - cadence.days) <= cadence.tolerance) || null;
+}
+
+function displayMerchantName(rows) {
+  const names = new Map();
+  rows.forEach((row) => names.set(row.description, (names.get(row.description) || 0) + 1));
+  return [...names.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0]?.[0] || "Unknown";
+}
+
+function estimateNextDate(lastDate, cadence) {
+  if (cadence.name === "Monthly") return addMonthsClamped(lastDate, 1);
+  if (cadence.name === "Quarterly") return addMonthsClamped(lastDate, 3);
+  if (cadence.name === "Annual") return addMonthsClamped(lastDate, 12);
+  return addDays(lastDate, cadence.days);
+}
+
+function detectRecurringSpend(rows) {
+  const groups = new Map();
+  rows
+    .filter((row) => row.spend > 0)
+    .forEach((row) => {
+      const merchantKey = normalizeMerchantKey(row.description);
+      if (!merchantKey || merchantKey.length < 3) return;
+      const key = [merchantKey, row.account, row.category].join("|");
+      const group = groups.get(key) || [];
+      group.push(row);
+      groups.set(key, group);
+    });
+
+  const recurring = [];
+
+  groups.forEach((group) => {
+    if (group.length < 2) return;
+    const sorted = [...group].sort((a, b) => a.date - b.date);
+    const intervals = sorted.slice(1).map((row, index) => (row.date - sorted[index].date) / 86400000);
+    const cadence = cadenceFromInterval(median(intervals));
+    if (!cadence) return;
+
+    const intervalDeviation = average(intervals.map((days) => Math.abs(days - cadence.days)));
+    if (intervals.length > 1 && intervalDeviation > cadence.tolerance) return;
+
+    const amounts = sorted.map((row) => row.spend);
+    const typical = median(amounts);
+    const amountDeviation = average(amounts.map((amount) => Math.abs(amount - typical)));
+    const amountVariation = typical ? amountDeviation / typical : 0;
+    const confidence = Math.max(
+      0.52,
+      Math.min(0.98, 1 - amountVariation * 0.65 - (intervalDeviation / cadence.tolerance) * 0.18 + Math.min(group.length - 2, 4) * 0.04),
+    );
+    const last = sorted.at(-1);
+
+    recurring.push({
+      merchant: displayMerchantName(sorted),
+      account: last.account,
+      category: last.category,
+      cadence: cadence.name,
+      occurrences: group.length,
+      typical,
+      monthlyEstimate: typical * cadence.monthlyEstimate,
+      lastDate: last.date,
+      nextDate: estimateNextDate(last.date, cadence),
+      confidence,
+      variableAmount: amountVariation > 0.12,
+    });
+  });
+
+  return recurring.sort((a, b) => b.monthlyEstimate - a.monthlyEstimate || b.confidence - a.confidence);
+}
+
 function assignCategoryColors() {
   state.categoryColors = new Map();
   const categories = [...new Set(state.allTransactions.map((row) => row.category))].sort((a, b) => a.localeCompare(b));
@@ -386,6 +549,34 @@ function renderKpis(rows) {
   els.kpiAverage.textContent = currencyExact.format(monthly.size ? total / monthly.size : 0);
   els.kpiHighMonth.textContent = highMonth ? `${monthLabel(highMonth[0])} ${currency.format(highMonth[1])}` : "-";
   els.kpiTopCategory.textContent = categories[0] ? categories[0][0] : "-";
+}
+
+function renderRecurring(rows) {
+  const recurring = detectRecurringSpend(rows);
+  const estimatedMonthly = recurring.reduce((sum, item) => sum + item.monthlyEstimate, 0);
+  const sortedRecurring = sortRows(recurring, state.tableSorts.recurring, (item, key) => item[key]);
+  const displayRows = sortedRecurring.slice(0, 12);
+
+  els.kpiRecurring.textContent = currencyExact.format(estimatedMonthly);
+  els.recurringSummary.textContent = recurring.length
+    ? `${recurring.length} recurring pattern${recurring.length === 1 ? "" : "s"} detected. Showing ${displayRows.length}. Estimate is monthly.`
+    : "No recurring spend detected in the current data.";
+  els.recurringRows.innerHTML =
+    displayRows
+      .map(
+        (item) => `<tr>
+          <td>
+            <span class="recurring-merchant">${escapeHtml(item.merchant)}</span>
+            <span class="recurring-meta">${escapeHtml(item.category)} · ${escapeHtml(item.account)} · ${item.occurrences} charges</span>
+          </td>
+          <td>${escapeHtml(item.cadence)}</td>
+          <td>${escapeHtml(displayDate(item.lastDate))}</td>
+          <td>${escapeHtml(displayDate(item.nextDate))}</td>
+          <td class="num">${currencyExact.format(item.typical)}${item.variableAmount ? '<span class="recurring-variable">Variable</span>' : ""}</td>
+          <td class="num">${Math.round(item.confidence * 100)}%</td>
+        </tr>`,
+      )
+      .join("") || `<tr><td colspan="6">${emptyHtml()}</td></tr>`;
 }
 
 function colorFor(index) {
@@ -608,15 +799,21 @@ function renderTrend(rows) {
 
 function renderCategoryTable(rows) {
   const total = rows.reduce((sum, row) => sum + row.spend, 0);
-  const categories = sortTotals(sumBy(rows, (row) => row.category)).filter(([, value]) => Math.abs(value) > 0.005);
-  if (!state.selectedCategory || !categories.some(([category]) => category === state.selectedCategory)) {
-    state.selectedCategory = categories[0]?.[0] || "";
+  const categories = sortTotals(sumBy(rows, (row) => row.category))
+    .filter(([, value]) => Math.abs(value) > 0.005)
+    .map(([category, value]) => ({
+      category,
+      value,
+      share: total ? value / total : 0,
+    }));
+  const sortedCategories = sortRows(categories, state.tableSorts.categories, (item, key) => item[key]);
+  if (!state.selectedCategory || !categories.some((item) => item.category === state.selectedCategory)) {
+    state.selectedCategory = sortedCategories[0]?.category || "";
   }
 
   els.categoryRows.innerHTML =
-    categories
-      .map(([category, value]) => {
-        const share = total ? value / total : 0;
+    sortedCategories
+      .map(({ category, value, share }) => {
         return `<tr class="selectable ${category === state.selectedCategory ? "selected" : ""}" data-category="${escapeHtml(category)}">
           <td><span class="category-name"><span class="category-dot" style="background:${colorForCategory(category)}"></span>${escapeHtml(category)}</span></td>
           <td class="num">${currencyExact.format(value)}</td>
@@ -667,11 +864,12 @@ function renderDetail(rows) {
 }
 
 function renderTransactions(rows) {
-  const visibleLimit = state.showAllTransactions ? rows.length : 50;
-  const visibleRows = rows.slice(0, visibleLimit);
+  const sortedRows = sortRows(rows, state.tableSorts.transactions, (row, key) => row[key]);
+  const visibleLimit = state.showAllTransactions ? sortedRows.length : 50;
+  const visibleRows = sortedRows.slice(0, visibleLimit);
   els.transactionToggle.hidden = rows.length <= 50;
   els.transactionToggle.textContent = state.showAllTransactions ? "Show Less" : "View All";
-  els.transactionSummary.textContent = `Showing ${visibleRows.length} of ${rows.length} filtered transactions.`;
+  els.transactionSummary.textContent = `Showing ${visibleRows.length} of ${sortedRows.length} filtered transactions.`;
   els.transactionRows.innerHTML =
     visibleRows
       .map(
@@ -703,6 +901,7 @@ function escapeHtml(value) {
 function render() {
   els.dashboard.hidden = !state.allTransactions.length;
   els.emptyUpload.hidden = Boolean(state.allTransactions.length);
+  updateSortButtons();
   if (!state.allTransactions.length) {
     renderQuality();
     return;
@@ -712,6 +911,7 @@ function render() {
   renderKpis(state.filtered);
   renderStackedChart(state.filtered);
   renderTrend(state.filtered);
+  renderRecurring(state.filtered);
   renderCategoryTable(state.filtered);
   renderDetail(state.filtered);
   renderTransactions(state.filtered);
@@ -763,6 +963,12 @@ async function loadInitialData() {
   els.refundToggle,
   els.stackMode,
 ].forEach((control) => control.addEventListener("input", render));
+
+els.sortButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    setTableSort(button.dataset.sortTable, button.dataset.sortKey, button.dataset.sortDefault || "asc");
+  });
+});
 
 els.transactionToggle.addEventListener("click", () => {
   state.showAllTransactions = !state.showAllTransactions;

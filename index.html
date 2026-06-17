@@ -85,6 +85,10 @@
             <span>Top Category</span>
             <strong id="kpiTopCategory">-</strong>
           </article>
+          <article>
+            <span>Recurring Spend</span>
+            <strong id="kpiRecurring">$0</strong>
+          </article>
         </section>
 
         <section class="chart-grid">
@@ -114,6 +118,30 @@
           </article>
         </section>
 
+        <section class="panel recurring-panel">
+          <div class="panel-heading">
+            <div>
+              <h2>Recurring Spend</h2>
+              <p id="recurringSummary">Detected from repeated merchant charges.</p>
+            </div>
+          </div>
+          <div class="table-wrap recurring-table">
+            <table>
+              <thead>
+                <tr>
+                  <th><button class="sort-button" type="button" data-sort-table="recurring" data-sort-key="merchant">Description</button></th>
+                  <th><button class="sort-button" type="button" data-sort-table="recurring" data-sort-key="cadence">Cadence</button></th>
+                  <th><button class="sort-button" type="button" data-sort-table="recurring" data-sort-key="lastDate" data-sort-default="desc">Last Charge</button></th>
+                  <th><button class="sort-button" type="button" data-sort-table="recurring" data-sort-key="nextDate">Next Estimate</button></th>
+                  <th class="num"><button class="sort-button" type="button" data-sort-table="recurring" data-sort-key="typical" data-sort-default="desc">Typical</button></th>
+                  <th class="num"><button class="sort-button" type="button" data-sort-table="recurring" data-sort-key="confidence" data-sort-default="desc">Confidence</button></th>
+                </tr>
+              </thead>
+              <tbody id="recurringRows"></tbody>
+            </table>
+          </div>
+        </section>
+
         <section class="split">
           <article class="panel">
             <div class="panel-heading">
@@ -126,9 +154,9 @@
               <table>
                 <thead>
                   <tr>
-                    <th>Category</th>
-                    <th class="num">Spend</th>
-                    <th class="num">Share</th>
+                    <th><button class="sort-button" type="button" data-sort-table="categories" data-sort-key="category">Category</button></th>
+                    <th class="num"><button class="sort-button" type="button" data-sort-table="categories" data-sort-key="value" data-sort-default="desc">Spend</button></th>
+                    <th class="num"><button class="sort-button" type="button" data-sort-table="categories" data-sort-key="share" data-sort-default="desc">Share</button></th>
                   </tr>
                 </thead>
                 <tbody id="categoryRows"></tbody>
@@ -161,12 +189,12 @@
             <table>
               <thead>
                 <tr>
-                  <th>Date</th>
-                  <th>Description</th>
-                  <th>Account</th>
-                  <th>Category</th>
-                  <th>Subcategory</th>
-                  <th class="num">Spend</th>
+                  <th><button class="sort-button" type="button" data-sort-table="transactions" data-sort-key="date" data-sort-default="desc">Date</button></th>
+                  <th><button class="sort-button" type="button" data-sort-table="transactions" data-sort-key="description">Description</button></th>
+                  <th><button class="sort-button" type="button" data-sort-table="transactions" data-sort-key="account">Account</button></th>
+                  <th><button class="sort-button" type="button" data-sort-table="transactions" data-sort-key="category">Category</button></th>
+                  <th><button class="sort-button" type="button" data-sort-table="transactions" data-sort-key="subcategory">Subcategory</button></th>
+                  <th class="num"><button class="sort-button" type="button" data-sort-table="transactions" data-sort-key="spend" data-sort-default="desc">Spend</button></th>
                 </tr>
               </thead>
               <tbody id="transactionRows"></tbody>

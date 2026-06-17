@@ -36,7 +36,8 @@ Local mode does not auto-load sample data. Use the extension for Fidelity sync, 
 - Net YTD spend, average monthly spend, highest month, and top category.
 - Category or subcategory spend by month.
 - Monthly spend trend.
+- Auto-detected recurring spend with cadence, next estimated charge, and confidence.
 - Category drilldown by subcategory and top descriptions.
-- Filterable transaction table.
+- Sortable category, recurring spend, and transaction tables.
 
 Extension-loaded dashboard data is stored in IndexedDB. Expense amounts are converted to positive spend with `spend = -amount`; refunds/credits therefore reduce spend.
