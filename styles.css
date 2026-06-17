@@ -371,6 +371,16 @@ input:focus,
   grid-column: 1 / -1;
 }
 
+.recurring-filter {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
 .panel-heading {
   display: flex;
   align-items: start;
@@ -716,6 +726,14 @@ tbody tr.selected {
   margin-top: 2px;
   color: var(--muted);
   font-size: 11px;
+}
+
+.recurring-status {
+  font-weight: 700;
+}
+
+.recurring-status.inactive {
+  color: var(--muted);
 }
 
 .empty {

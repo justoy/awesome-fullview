@@ -124,6 +124,10 @@
               <h2>Recurring Spend</h2>
               <p id="recurringSummary">Detected from repeated merchant charges.</p>
             </div>
+            <label class="recurring-filter">
+              <input id="recurringActiveOnly" type="checkbox" checked>
+              Active only
+            </label>
           </div>
           <div class="table-wrap recurring-table">
             <table>
@@ -132,7 +136,7 @@
                   <th><button class="sort-button" type="button" data-sort-table="recurring" data-sort-key="merchant">Description</button></th>
                   <th><button class="sort-button" type="button" data-sort-table="recurring" data-sort-key="cadence">Cadence</button></th>
                   <th><button class="sort-button" type="button" data-sort-table="recurring" data-sort-key="lastDate" data-sort-default="desc">Last Charge</button></th>
-                  <th><button class="sort-button" type="button" data-sort-table="recurring" data-sort-key="nextDate">Next Estimate</button></th>
+                  <th><button class="sort-button" type="button" data-sort-table="recurring" data-sort-key="active" data-sort-default="desc">Status</button></th>
                   <th class="num"><button class="sort-button" type="button" data-sort-table="recurring" data-sort-key="typical" data-sort-default="desc">Typical</button></th>
                   <th class="num"><button class="sort-button" type="button" data-sort-table="recurring" data-sort-key="confidence" data-sort-default="desc">Confidence</button></th>
                 </tr>

@@ -159,7 +159,7 @@ Refunds/credits are therefore negative spend.
 
 ## Recurring Spend Detection
 
-Recurring spend is a dashboard-only derived analysis in `app.js`; it is not persisted in IndexedDB. The detector groups positive-spend expense rows by normalized description, account, and category, then looks for repeated charges whose median spacing matches a known cadence:
+Recurring spend is a dashboard-only derived analysis in `app.js`; it is not persisted in IndexedDB. The detector groups positive-spend expense rows by normalized description, account, and category, then looks for at least two charges whose spacing matches a known cadence:
 
 - Weekly: about 7 days.
 - Biweekly: about 14 days.
@@ -167,7 +167,7 @@ Recurring spend is a dashboard-only derived analysis in `app.js`; it is not pers
 - Quarterly: about 91 days.
 - Annual: about 365 days.
 
-The recurring panel displays the detected merchant, cadence, last charge, estimated next charge, typical amount, and a confidence score. The recurring KPI is the estimated monthly amount, with weekly, biweekly, quarterly, and annual charges prorated to a monthly estimate. Refunds and credits are excluded from recurring candidates because their `spend` value is negative.
+The recurring panel displays the detected merchant, cadence, last charge, active status, typical amount, and a confidence score. A pattern is active when its latest charge is within one cadence plus that cadence's tolerance window. The panel defaults to active patterns only, and users can include inactive patterns with the `Active only` checkbox. The recurring KPI follows that filter and shows the estimated monthly amount, with weekly, biweekly, quarterly, and annual charges prorated to a monthly estimate. Refunds and credits are excluded from recurring candidates because their `spend` value is negative.
 
 ## Table Sorting
 

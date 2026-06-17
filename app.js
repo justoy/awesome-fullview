@@ -67,6 +67,7 @@ const els = {
   legend: document.querySelector("#legend"),
   trendChart: document.querySelector("#trendChart"),
   recurringSummary: document.querySelector("#recurringSummary"),
+  recurringActiveOnly: document.querySelector("#recurringActiveOnly"),
   recurringRows: document.querySelector("#recurringRows"),
   categoryRows: document.querySelector("#categoryRows"),
   detailTitle: document.querySelector("#detailTitle"),
@@ -175,22 +176,6 @@ function displayDate(date) {
     day: "numeric",
     year: "numeric",
   });
-}
-
-function addDays(date, days) {
-  const next = new Date(date);
-  next.setDate(next.getDate() + Math.round(days));
-  return next;
-}
-
-function addMonthsClamped(date, months) {
-  const next = new Date(date);
-  const day = next.getDate();
-  next.setDate(1);
-  next.setMonth(next.getMonth() + months);
-  const maxDay = new Date(next.getFullYear(), next.getMonth() + 1, 0).getDate();
-  next.setDate(Math.min(day, maxDay));
-  return next;
 }
 
 function normalizeAccount(name) {
@@ -414,14 +399,9 @@ function displayMerchantName(rows) {
   return [...names.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0]?.[0] || "Unknown";
 }
 
-function estimateNextDate(lastDate, cadence) {
-  if (cadence.name === "Monthly") return addMonthsClamped(lastDate, 1);
-  if (cadence.name === "Quarterly") return addMonthsClamped(lastDate, 3);
-  if (cadence.name === "Annual") return addMonthsClamped(lastDate, 12);
-  return addDays(lastDate, cadence.days);
-}
-
-function detectRecurringSpend(rows) {
+function detectRecurringSpend(rows, asOf = new Date()) {
+  const referenceDate = new Date(asOf);
+  referenceDate.setHours(0, 0, 0, 0);
   const groups = new Map();
   rows
     .filter((row) => row.spend > 0)
@@ -455,6 +435,8 @@ function detectRecurringSpend(rows) {
       Math.min(0.98, 1 - amountVariation * 0.65 - (intervalDeviation / cadence.tolerance) * 0.18 + Math.min(group.length - 2, 4) * 0.04),
     );
     const last = sorted.at(-1);
+    const daysSinceLastCharge = (referenceDate - last.date) / 86400000;
+    const active = daysSinceLastCharge <= cadence.days + cadence.tolerance;
 
     recurring.push({
       merchant: displayMerchantName(sorted),
@@ -465,7 +447,7 @@ function detectRecurringSpend(rows) {
       typical,
       monthlyEstimate: typical * cadence.monthlyEstimate,
       lastDate: last.date,
-      nextDate: estimateNextDate(last.date, cadence),
+      active,
       confidence,
       variableAmount: amountVariation > 0.12,
     });
@@ -552,14 +534,15 @@ function renderKpis(rows) {
 }
 
 function renderRecurring(rows) {
-  const recurring = detectRecurringSpend(rows);
+  const detected = detectRecurringSpend(rows);
+  const recurring = els.recurringActiveOnly.checked ? detected.filter((item) => item.active) : detected;
   const estimatedMonthly = recurring.reduce((sum, item) => sum + item.monthlyEstimate, 0);
   const sortedRecurring = sortRows(recurring, state.tableSorts.recurring, (item, key) => item[key]);
   const displayRows = sortedRecurring.slice(0, 12);
 
   els.kpiRecurring.textContent = currencyExact.format(estimatedMonthly);
-  els.recurringSummary.textContent = recurring.length
-    ? `${recurring.length} recurring pattern${recurring.length === 1 ? "" : "s"} detected. Showing ${displayRows.length}. Estimate is monthly.`
+  els.recurringSummary.textContent = detected.length
+    ? `${detected.length} recurring pattern${detected.length === 1 ? "" : "s"} detected. Showing ${displayRows.length}${els.recurringActiveOnly.checked ? " active" : ""}. Estimate is monthly.`
     : "No recurring spend detected in the current data.";
   els.recurringRows.innerHTML =
     displayRows
@@ -571,7 +554,7 @@ function renderRecurring(rows) {
           </td>
           <td>${escapeHtml(item.cadence)}</td>
           <td>${escapeHtml(displayDate(item.lastDate))}</td>
-          <td>${escapeHtml(displayDate(item.nextDate))}</td>
+          <td><span class="recurring-status${item.active ? "" : " inactive"}">${item.active ? "Active" : "Inactive"}</span></td>
           <td class="num">${currencyExact.format(item.typical)}${item.variableAmount ? '<span class="recurring-variable">Variable</span>' : ""}</td>
           <td class="num">${Math.round(item.confidence * 100)}%</td>
         </tr>`,
@@ -962,6 +945,7 @@ async function loadInitialData() {
   els.searchInput,
   els.refundToggle,
   els.stackMode,
+  els.recurringActiveOnly,
 ].forEach((control) => control.addEventListener("input", render));
 
 els.sortButtons.forEach((button) => {
