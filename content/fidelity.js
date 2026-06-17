@@ -24,14 +24,17 @@
 
   async function collect(range) {
     await waitForReady();
+    const appHeaders = capturedSummaryRequest?.appHeaders;
+    if (!appHeaders?.["fid-originating-app-id"] || !appHeaders?.["fid-client-app-id"]) {
+      throw new Error("Fidelity's application headers were not captured. Reload the Fidelity Spending tab and select the date range again.");
+    }
     const body = window.financeNormalization.buildFidelitySummaryRequest(range);
     const response = await fetch(SUMMARY_URL, {
       method: "POST",
       credentials: "include",
       headers: {
         "Content-Type": "application/json",
-        "fid-originating-app-id": "AP146978",
-        "fid-client-app-id": "AP146978",
+        ...appHeaders,
         reset: "false",
       },
       body: JSON.stringify(body),

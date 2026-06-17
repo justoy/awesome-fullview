@@ -41,7 +41,7 @@ async function fetchSummaryInPage(tabId) {
     func: () => {
       const captured = window.__fullViewSpendingLastSummaryRequest;
       return captured?.body
-        ? { at: captured.at, body: captured.body, url: captured.url }
+        ? { at: captured.at, body: captured.body, appHeaders: captured.appHeaders, url: captured.url }
         : null;
     },
   });
@@ -49,29 +49,28 @@ async function fetchSummaryInPage(tabId) {
   if (!captured?.body) {
     throw new Error("Select the date range in Fidelity first, then refresh again after the Fidelity page updates. If the extension was just reloaded, reload the Fidelity Spending tab first.");
   }
+  if (!captured.appHeaders?.["fid-originating-app-id"] || !captured.appHeaders?.["fid-client-app-id"]) {
+    throw new Error("Fidelity's application headers were not captured. Reload the Fidelity Spending tab, select the date range again, then refresh.");
+  }
 
   const requestBody = captured.body;
   const bodySource = `captured ${captured.at}`;
   const [result] = await chrome.scripting.executeScript({
     target: { tabId },
     world: "MAIN",
-    args: [requestBody, bodySource],
-    func: async (requestBody, bodySource) => {
+    args: [requestBody, captured.appHeaders, bodySource],
+    func: async (requestBody, appHeaders, bodySource) => {
       await fetch("/ftgw/pna/customer/planning/cashflow-api/status", {
         method: "GET",
         credentials: "include",
-        headers: {
-          "fid-originating-app-id": "AP146978",
-          "fid-client-app-id": "AP146978",
-        },
+        headers: appHeaders,
       }).catch(() => {});
       const response = await fetch("/ftgw/pna/customer/planning/cashflow-api/v1/summary", {
         method: "POST",
         credentials: "include",
         headers: {
           "Content-Type": "application/json",
-          "fid-originating-app-id": "AP146978",
-          "fid-client-app-id": "AP146978",
+          ...appHeaders,
           reset: "false",
         },
         body: JSON.stringify(requestBody),

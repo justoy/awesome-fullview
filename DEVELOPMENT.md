@@ -50,8 +50,8 @@ The request must run in the authenticated Fidelity tab with:
 credentials: include
 Content-Type: application/json
 reset: false
-fid-originating-app-id: AP146978
-fid-client-app-id: AP146978
+fid-originating-app-id: <captured from Fidelity's request>
+fid-client-app-id: <captured from Fidelity's request>
 ```
 
 Fidelity's Angular app also primes the API before summary calls:
@@ -64,9 +64,9 @@ The extension mirrors this in `background.js` before posting to `/v1/summary`.
 
 ## Request Body
 
-The active refresh path reuses Fidelity's own captured request body from `content/page-hook.js`. Users select MTD, YTD, or custom dates in Fidelity, Fidelity issues the matching summary request, and the extension posts that same body again from the authenticated page context.
+The active refresh path reuses Fidelity's captured request body and application ID headers from `content/page-hook.js`. The hook allowlists only `fid-originating-app-id` and `fid-client-app-id`; it does not capture cookies, authorization data, or other request headers. Users select MTD, YTD, or custom dates in Fidelity, Fidelity issues the matching summary request, and the extension posts that same body again from the authenticated page context.
 
-If no request has been captured yet, the refresh fails with an instruction to select the date range in Fidelity first. `buildFidelitySummaryRequest()` remains in `lib/normalization.js` only for the legacy content-script collection path.
+If no request body or application ID headers have been captured yet, the refresh fails with an instruction to reload the Fidelity tab and select the date range again. `buildFidelitySummaryRequest()` remains in `lib/normalization.js` only for the legacy content-script collection path.
 
 The legacy YTD body includes:
 
@@ -235,7 +235,7 @@ node --check popup.js
 ## Known Limitations And Next Steps
 
 - The dashboard is spending-focused. Income/saving/transfers are stored but currently excluded from dashboard rendering.
-- The active request body is captured from Fidelity's own page request. If Fidelity changes its app, update `content/page-hook.js` and response normalization first.
+- The active request body and application ID headers are captured from Fidelity's own page request. If Fidelity changes its app, update `content/page-hook.js` and response normalization first.
 - `content/page-hook.js` must be injected before Fidelity makes the summary request, so extension reloads should be followed by a Fidelity Spending tab reload.
 - There is no historical merge yet; each sync replaces stored transactions.
 - Future useful features: account filters from normalized data, separate cashflow/income views, sync history UI, data export, and category cleanup rules.
