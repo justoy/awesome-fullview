@@ -11,7 +11,7 @@ Load this directory as an unpacked Chrome extension:
 3. Choose `Load unpacked`.
 4. Select this repo directory.
 
-The extension popup can open the Fidelity Full View Spending page and request MTD, YTD, or custom date ranges after you complete Fidelity login/MFA in the normal Fidelity tab. Pulled transactions are normalized and stored locally in IndexedDB, then shown in the extension dashboard.
+Select the desired date range in Fidelity Full View Spending first, then use the extension popup to refresh from Fidelity's currently selected view. Pulled transactions are normalized and stored locally in IndexedDB, then shown in the extension dashboard.
 
 The extension does not handle Fidelity credentials.
 

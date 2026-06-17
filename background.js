@@ -34,16 +34,29 @@ async function openDashboard() {
   return chrome.tabs.create({ url, active: true });
 }
 
-async function fetchSummaryInPage(tabId, range) {
-  const fallbackBody = globalThis.financeNormalization.buildFidelitySummaryRequest(range);
+async function fetchSummaryInPage(tabId) {
+  const [captureResult] = await chrome.scripting.executeScript({
+    target: { tabId },
+    world: "MAIN",
+    func: () => {
+      const captured = window.__fullViewSpendingLastSummaryRequest;
+      return captured?.body
+        ? { at: captured.at, body: captured.body, url: captured.url }
+        : null;
+    },
+  });
+  const captured = captureResult?.result;
+  if (!captured?.body) {
+    throw new Error("Select the date range in Fidelity first, then refresh again after the Fidelity page updates. If the extension was just reloaded, reload the Fidelity Spending tab first.");
+  }
+
+  const requestBody = captured.body;
+  const bodySource = `captured ${captured.at}`;
   const [result] = await chrome.scripting.executeScript({
     target: { tabId },
     world: "MAIN",
-    args: [fallbackBody],
-    func: async (fallbackRequestBody) => {
-      const captured = window.__fullViewSpendingLastSummaryRequest;
-      const requestBody = captured?.body || fallbackRequestBody;
-      const bodySource = captured?.body ? `captured ${captured.at}` : "fallback";
+    args: [requestBody, bodySource],
+    func: async (requestBody, bodySource) => {
       await fetch("/ftgw/pna/customer/planning/cashflow-api/status", {
         method: "GET",
         credentials: "include",
@@ -86,52 +99,41 @@ async function fetchSummaryInPage(tabId, range) {
     const detail = payload.textPrefix ? ` ${payload.textPrefix}` : "";
     throw new Error(`Fidelity summary request failed with HTTP ${payload.status} using ${payload.bodySource}.${detail}`);
   }
-  return payload.json;
+  return { json: payload.json, capturedAt: captured.at };
 }
 
-async function collectFromTab(tabId, range) {
-  let raw;
-  try {
-    raw = await fetchSummaryInPage(tabId, range);
-  } catch (error) {
-    const response = await chrome.tabs.sendMessage(tabId, { type: "COLLECT_FIDELITY", range });
-    if (!response?.ok) throw error;
-    if (!response.transactions?.length) {
-      throw new Error(response.debug || "Fidelity returned no recognizable transactions.");
-    }
-    const syncRun = await globalThis.financeDb.replaceTransactions(response.transactions, { range });
-    await openDashboard();
-    return syncRun;
-  }
-
-  const transactions = globalThis.financeNormalization.normalizeFidelitySummaryResponse(raw);
+async function collectFromTab(tabId) {
+  const raw = await fetchSummaryInPage(tabId);
+  const transactions = globalThis.financeNormalization.normalizeFidelitySummaryResponse(raw.json);
   if (!transactions.length) {
-    throw new Error(`Fidelity returned no recognizable transactions. Response keys: ${Object.keys(raw || {}).slice(0, 12).join(", ")}`);
+    throw new Error(`Fidelity returned no recognizable transactions. Response keys: ${Object.keys(raw.json || {}).slice(0, 12).join(", ")}`);
   }
 
-  const syncRun = await globalThis.financeDb.replaceTransactions(transactions, { range });
+  const syncRun = await globalThis.financeDb.replaceTransactions(transactions, {
+    range: { mode: "fidelity-selected", capturedAt: raw.capturedAt },
+  });
   await openDashboard();
   return syncRun;
 }
 
-async function startRefresh(range) {
+async function startRefresh() {
   const tab = await openOrFocusSpendingTab();
-  pendingRefresh = { tabId: tab.id, range: range || { mode: "ytd" }, startedAt: Date.now() };
+  pendingRefresh = { tabId: tab.id, startedAt: Date.now() };
   try {
-    return await collectFromTab(tab.id, pendingRefresh.range);
+    return await collectFromTab(tab.id);
   } catch (error) {
     const message = String(error?.message || "");
     if (message.includes("Receiving end does not exist")) {
       return { status: "waiting", message: "Reload the Fidelity Spending tab, then click Refresh Fidelity again." };
     }
-    await globalThis.financeDb.recordSyncFailure(error, { range: pendingRefresh.range });
+    await globalThis.financeDb.recordSyncFailure(error, { range: { mode: "fidelity-selected" } });
     throw error;
   }
 }
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message?.type === "START_REFRESH") {
-    startRefresh(message.range)
+    startRefresh()
       .then((result) => sendResponse({ ok: true, result }))
       .catch((error) => sendResponse({ ok: false, error: error.message }));
     return true;
@@ -157,7 +159,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   if (message?.type === "FIDELITY_PAGE_READY" && sender.tab?.id) {
     if (pendingRefresh && pendingRefresh.tabId === sender.tab.id) {
-      collectFromTab(sender.tab.id, pendingRefresh.range).catch(() => {});
+      collectFromTab(sender.tab.id).catch(() => {});
     }
   }
 

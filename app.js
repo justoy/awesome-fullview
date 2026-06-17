@@ -991,7 +991,7 @@ els.fileInput.addEventListener("change", async (event) => {
 els.refreshFidelity.addEventListener("click", async () => {
   if (!IS_EXTENSION) return;
   els.sourceLabel.textContent = "Opening Fidelity...";
-  const response = await chrome.runtime.sendMessage({ type: "START_REFRESH", range: { mode: "ytd" } });
+  const response = await chrome.runtime.sendMessage({ type: "START_REFRESH" });
   if (!response.ok) {
     els.sourceLabel.textContent = response.error || "Refresh failed.";
     return;

@@ -1,22 +1,8 @@
 const els = {
   status: document.querySelector("#status"),
-  rangeMode: document.querySelector("#rangeMode"),
-  customDates: document.querySelector("#customDates"),
-  fromdate: document.querySelector("#fromdate"),
-  todate: document.querySelector("#todate"),
   refresh: document.querySelector("#refresh"),
   dashboard: document.querySelector("#dashboard"),
 };
-
-function rangeFromControls() {
-  const mode = els.rangeMode.value;
-  if (mode !== "custom") return { mode };
-  return {
-    mode,
-    fromdate: els.fromdate.value,
-    todate: els.todate.value,
-  };
-}
 
 function sendMessage(message) {
   return chrome.runtime.sendMessage(message);
@@ -39,13 +25,9 @@ async function loadStatus() {
     : response.lastSyncError?.error || "No local transaction data yet.";
 }
 
-els.rangeMode.addEventListener("input", () => {
-  els.customDates.hidden = els.rangeMode.value !== "custom";
-});
-
 els.refresh.addEventListener("click", async () => {
   els.status.textContent = "Opening Fidelity...";
-  const response = await sendMessage({ type: "START_REFRESH", range: rangeFromControls() });
+  const response = await sendMessage({ type: "START_REFRESH" });
   els.status.textContent = response.ok
     ? response.result?.message || formatSync(response.result)
     : response.error || "Refresh failed.";

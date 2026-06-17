@@ -52,36 +52,10 @@ h1 {
   font-size: 13px;
 }
 
-label {
-  display: grid;
-  gap: 5px;
-  color: var(--muted);
-  font-size: 11px;
-  font-weight: 800;
-  text-transform: uppercase;
-}
-
-select,
-input,
 button {
   height: 36px;
   border-radius: 6px;
   font: inherit;
-}
-
-select,
-input {
-  min-width: 0;
-  padding: 0 9px;
-  border: 1px solid var(--line);
-  background: var(--surface);
-  color: var(--ink);
-}
-
-.date-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
 }
 
 .actions {
