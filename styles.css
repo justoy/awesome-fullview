@@ -397,11 +397,13 @@ input:focus,
 
 .stacked-chart {
   display: grid;
-  grid-template-columns: 50px repeat(var(--month-count, 6), minmax(42px, 1fr));
+  grid-template-columns: 50px repeat(var(--month-count, 6), minmax(64px, 1fr));
   align-items: end;
   gap: 9px;
   min-height: 232px;
   padding: 8px 2px 0;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
 }
 
 .axis-label {
@@ -535,6 +537,8 @@ input:focus,
 
 .trend-chart {
   min-height: 236px;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
 }
 
 .trend-chart svg {
@@ -820,7 +824,6 @@ tbody tr.selected {
   }
 
   .stacked-chart {
-    overflow-x: auto;
     grid-template-columns: 42px repeat(var(--month-count, 6), minmax(58px, 1fr));
   }
 

@@ -170,6 +170,15 @@ function monthLabel(key) {
   });
 }
 
+function monthAxisLabel(key, includeYear = false) {
+  if (!includeYear) return monthLabel(key);
+  const [year, month] = key.split("-").map(Number);
+  return new Date(year, month - 1, 1).toLocaleDateString("en-US", {
+    month: "short",
+    year: "2-digit",
+  });
+}
+
 function displayDate(date) {
   return date.toLocaleDateString("en-US", {
     month: "short",
@@ -573,6 +582,7 @@ function colorForCategory(category, fallbackIndex = 0) {
 function renderStackedChart(rows) {
   const mode = els.stackMode.value;
   const months = [...new Set(state.allTransactions.map((row) => row.month))].sort();
+  const includeYear = months.length > 12;
   const keyFn = mode === "subcategory" ? (row) => row.subcategory : (row) => row.category;
   const seriesTotals = sortTotals(sumBy(rows, keyFn)).filter(([, total]) => total > 0);
   const topSeries = seriesTotals.slice(0, 10).map(([key]) => key);
@@ -623,7 +633,7 @@ function renderStackedChart(rows) {
       `<div class="stack-column">
         <div class="month-total">${currency.format(monthSpend)}</div>
         <div class="stack" style="height:${height}px">${segments}</div>
-        <div class="month-label">${monthLabel(month)}</div>
+        <div class="month-label">${monthAxisLabel(month, includeYear)}</div>
       </div>`,
     );
   });
@@ -734,10 +744,11 @@ function hideTooltip() {
 
 function renderTrend(rows) {
   const months = [...new Set(state.allTransactions.map((row) => row.month))].sort();
+  const includeYear = months.length > 12;
   const monthly = sumBy(rows, (row) => row.month);
   const values = months.map((month) => Math.max(0, monthly.get(month) || 0));
   const maxValue = Math.max(1, ...values);
-  const width = 520;
+  const width = Math.max(520, 82 + Math.max(0, months.length - 1) * 72);
   const height = 236;
   const pad = { top: 24, right: 24, bottom: 36, left: 58 };
   const innerW = width - pad.left - pad.right;
@@ -752,7 +763,7 @@ function renderTrend(rows) {
   const area = `${path} L ${pad.left + (points.length - 1) * step} ${pad.top + innerH} L ${pad.left} ${pad.top + innerH} Z`;
 
   els.trendChart.innerHTML = `
-    <svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Monthly spend trend">
+    <svg viewBox="0 0 ${width} ${height}" style="min-width:${width}px" role="img" aria-label="Monthly spend trend">
       <line x1="${pad.left}" y1="${pad.top + innerH}" x2="${width - pad.right}" y2="${pad.top + innerH}" stroke="#d9dfda" />
       <line x1="${pad.left}" y1="${pad.top}" x2="${pad.left}" y2="${pad.top + innerH}" stroke="#d9dfda" />
       <text x="${pad.left - 8}" y="${pad.top + innerH}" text-anchor="end" font-size="12" fill="#66716d">$0</text>
@@ -772,7 +783,7 @@ function renderTrend(rows) {
             <text x="${labelX}" y="${labelY}" text-anchor="middle" font-size="12" font-weight="800" fill="#6b7280">${label}</text>
             <circle class="trend-point" cx="${x}" cy="${y}" r="4" fill="#2563eb"
               data-tooltip="${escapeHtml(`Monthly Trend|${monthLabel(month)}|${currencyExact.format(value)}|Filtered total`)}"></circle>
-            <text x="${x}" y="${height - 14}" text-anchor="middle" font-size="12" fill="#66716d">${monthLabel(month)}</text>`;
+            <text x="${x}" y="${height - 14}" text-anchor="middle" font-size="12" fill="#66716d">${monthAxisLabel(month, includeYear)}</text>`;
           },
         )
         .join("")}
