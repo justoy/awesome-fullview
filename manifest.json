@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Full View Spending",
+  "name": "Awesome Full View",
   "description": "Pull Fidelity Full View transactions from an authenticated browser session and show a local spending dashboard.",
   "version": "0.1.0",
   "permissions": ["tabs", "storage", "scripting"],

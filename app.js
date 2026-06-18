@@ -50,6 +50,7 @@ const els = {
   emptyUpload: document.querySelector("#emptyUpload"),
   sourceLabel: document.querySelector("#sourceLabel"),
   refreshFidelity: document.querySelector("#refreshFidelity"),
+  exportCsv: document.querySelector("#exportCsv"),
   monthFilter: document.querySelector("#monthFilter"),
   accountFilter: document.querySelector("#accountFilter"),
   categoryFilter: document.querySelector("#categoryFilter"),
@@ -131,6 +132,52 @@ function csvParse(text) {
   }
 
   return rows;
+}
+
+function csvCell(value, protectFormula = true) {
+  let text = String(value ?? "");
+  if (protectFormula && /^[=+\-@]/.test(text)) text = `'${text}`;
+  return `"${text.replaceAll('"', '""')}"`;
+}
+
+function localIsoDate(date) {
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, "0"),
+    String(date.getDate()).padStart(2, "0"),
+  ].join("-");
+}
+
+function transactionsToCsv(rows) {
+  const records = rows.map((row) => [
+    localIsoDate(row.date),
+    row.description,
+    row.amount,
+    row.account,
+    row.type,
+    row.category,
+    row.subcategory,
+    row.hidden,
+  ]);
+  const numericColumns = new Set([2]);
+  return [REQUIRED_COLUMNS, ...records]
+    .map((record) => record.map((value, index) => csvCell(value, !numericColumns.has(index))).join(","))
+    .join("\r\n");
+}
+
+function exportFilteredCsv() {
+  if (!state.filtered.length) return;
+  const csv = `\uFEFF${transactionsToCsv(state.filtered)}`;
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  const today = localIsoDate(new Date());
+  link.href = url;
+  link.download = `full-view-spending-${today}.csv`;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
 }
 
 function parseDate(value) {
@@ -901,6 +948,7 @@ function render() {
     return;
   }
   state.filtered = filteredTransactions();
+  els.exportCsv.disabled = !state.filtered.length;
   renderQuality();
   renderKpis(state.filtered);
   renderStackedChart(state.filtered);
@@ -976,6 +1024,7 @@ els.merchantToggle.addEventListener("click", () => {
 });
 
 els.clearFilters.addEventListener("click", clearFilters);
+els.exportCsv.addEventListener("click", exportFilteredCsv);
 
 els.fileInput.addEventListener("change", async (event) => {
   const file = event.target.files?.[0];

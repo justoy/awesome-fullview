@@ -4,16 +4,17 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Full View Spending</title>
-    <link rel="stylesheet" href="styles.css?v=10">
+    <link rel="stylesheet" href="styles.css?v=11">
   </head>
   <body>
     <header class="app-header">
       <div>
-        <p class="eyebrow">Fidelity Full View</p>
+        <p class="eyebrow">Awesome Full View</p>
         <h1>Spending Analysis</h1>
       </div>
       <div class="file-actions">
         <button id="refreshFidelity" class="file-button" type="button" hidden>Refresh Fidelity</button>
+        <button id="exportCsv" class="file-button secondary" type="button" disabled title="Export the currently filtered transactions">Export CSV</button>
         <label class="file-button" for="fileInput">
           <input id="fileInput" type="file" accept=".csv,text/csv">
           Import CSV
@@ -214,6 +215,6 @@
     <div id="chartTooltip" class="chart-tooltip" role="status" hidden></div>
 
     <script src="lib/db.js"></script>
-    <script src="app.js"></script>
+    <script src="app.js?v=11"></script>
   </body>
 </html>
