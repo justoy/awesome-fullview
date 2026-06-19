@@ -1,15 +1,20 @@
 {
   "manifest_version": 3,
+  "minimum_chrome_version": "116",
   "name": "Awesome Full View",
   "description": "Pull Fidelity Full View transactions from an authenticated browser session and show a local spending dashboard.",
   "version": "0.1.0",
-  "permissions": ["tabs", "storage", "scripting"],
+  "icons": {
+    "128": "docs/screenshots/chrome_extensions/icon.png"
+  },
+  "permissions": ["scripting"],
   "host_permissions": ["https://digital.fidelity.com/*"],
   "background": {
     "service_worker": "background.js"
   },
   "action": {
     "default_title": "Full View Spending",
+    "default_icon": "docs/screenshots/chrome_extensions/icon.png",
     "default_popup": "popup.html"
   },
   "content_scripts": [

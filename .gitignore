@@ -1,3 +1,4 @@
+*.zip
 *.csv
 !example.csv
 .DS_Store

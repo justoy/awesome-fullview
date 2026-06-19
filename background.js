@@ -7,13 +7,22 @@ function dashboardUrl() {
   return chrome.runtime.getURL("index.html");
 }
 
-async function findTabByUrl(prefix) {
-  const tabs = await chrome.tabs.query({});
-  return tabs.find((tab) => tab.url?.startsWith(prefix)) || null;
+async function findSpendingTab() {
+  const urlPattern = `${SPENDING_URL}*`;
+  const [tab] = await chrome.tabs.query({ url: urlPattern });
+  return tab || null;
+}
+
+async function findDashboardTabId() {
+  const [context] = await chrome.runtime.getContexts({
+    contextTypes: ["TAB"],
+    documentUrls: [dashboardUrl()],
+  });
+  return context?.tabId >= 0 ? context.tabId : null;
 }
 
 async function openOrFocusSpendingTab() {
-  const existing = await findTabByUrl(SPENDING_URL);
+  const existing = await findSpendingTab();
   if (existing) {
     await chrome.tabs.update(existing.id, { active: true });
     if (existing.windowId !== chrome.windows.WINDOW_ID_NONE) {
@@ -26,10 +35,9 @@ async function openOrFocusSpendingTab() {
 
 async function openDashboard() {
   const url = dashboardUrl();
-  const existing = await findTabByUrl(url);
-  if (existing) {
-    await chrome.tabs.update(existing.id, { active: true });
-    return existing;
+  const existingTabId = await findDashboardTabId();
+  if (existingTabId !== null) {
+    return chrome.tabs.update(existingTabId, { active: true });
   }
   return chrome.tabs.create({ url, active: true });
 }
